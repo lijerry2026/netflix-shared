@@ -27,12 +27,12 @@
             height: 100px;
             border-radius: 50%;
             margin: 0 auto 20px;
-            background-color: #46d369; /* 預設綠色：沒人用 */
+            background-color: #46d369;
             box-shadow: 0 0 20px #46d369;
             transition: all 0.3s ease;
         }
         .status-dot.busy {
-            background-color: #e50914; /* 紅色：有人在看 */
+            background-color: #e50914;
             box-shadow: 0 0 20px #e50914;
         }
         .status-text {
@@ -64,22 +64,46 @@
 
     <button id="toggleBtn" class="btn">我要開始看 Netflix</button>
 
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+
     <script>
-        // 註冊 PWA 的 Service Worker
+        // 註冊 PWA Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
                 .then(() => console.log('Service Worker 註冊成功！'))
                 .catch(err => console.log('註冊失敗：', err));
         }
 
-        // 模擬狀態（實際開發時，這裡要改成串接 Firebase 資料庫）
-        let isUsing = false;
+        // 貼上你截圖中的 Firebase 設定（已手動補上 databaseURL）
+        const firebaseConfig = {
+            apiKey: "AIzaSyAAYQduNLkf_27N7Q97fyVRrK7KEZEq-i4",
+            authDomain: "netflix-status-73cbc.firebaseapp.com",
+            databaseURL: "https://netflix-status-73cbc-default-rtdb.firebaseio.com",
+            projectId: "netflix-status-73cbc",
+            storageBucket: "netflix-status-73cbc.firebasestorage.app",
+            messagingSenderId: "125309083411",
+            appId: "1:125309083411:web:e358f870ddba159c1444e6"
+        };
+
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const netflixStatusRef = database.ref('netflix/isUsing');
 
         const statusDot = document.getElementById('statusDot');
         const statusText = document.getElementById('statusText');
         const toggleBtn = document.getElementById('toggleBtn');
+        
+        let currentStatus = false;
 
-        function updateUI() {
+        // 監聽雲端資料庫變動
+        netflixStatusRef.on('value', (snapshot) => {
+            currentStatus = snapshot.val() || false;
+            updateUI(currentStatus);
+        });
+
+        function updateUI(isUsing) {
             if (isUsing) {
                 statusDot.classList.add('busy');
                 statusText.innerText = '有人正在看，先等等！';
@@ -95,10 +119,9 @@
             }
         }
 
+        // 點擊修改雲端狀態
         toggleBtn.addEventListener('click', () => {
-            isUsing = !isUsing;
-            // TODO: 在這裡把 isUsing 的狀態上傳到 Firebase
-            updateUI();
+            netflixStatusRef.set(!currentStatus);
         });
     </script>
 </body>
