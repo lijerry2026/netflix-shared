@@ -44,7 +44,87 @@
             overflow: hidden;
         }
 
+        /* 網頁頂部高級 Toast 提示元件 */
+        .toast-notification {
+            position: fixed;
+            top: -70px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.9);
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 14px 28px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffffff;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 9999;
+            transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2), 
+                        transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2), 
+                        opacity 0.3s ease;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toast-notification.show {
+            top: 24px;
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+        }
+        .toast-notification.error { border-color: rgba(229, 9, 20, 0.4); box-shadow: 0 10px 30px rgba(229, 9, 20, 0.2); }
+        .toast-notification.success { border-color: rgba(70, 211, 105, 0.4); box-shadow: 0 10px 30px rgba(70, 211, 105, 0.2); }
+
+        /* 網頁內置確認對話框 */
+        .confirm-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(0px);
+            -webkit-backdrop-filter: blur(0px);
+            z-index: 9998;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease;
+        }
+        .confirm-overlay.show { 
+            display: flex; 
+            opacity: 1; 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .confirm-box {
+            background: #141414;
+            border: 1px solid var(--border-light);
+            border-radius: 24px;
+            padding: 28px 24px;
+            width: 90%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+            transform: scale(0.85);
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .confirm-overlay.show .confirm-box { transform: scale(1); }
+        .confirm-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; line-height: 1.5; color: #f5f5f5; }
+        .confirm-btns { display: flex; gap: 12px; }
+        .confirm-btn {
+            flex: 1; padding: 12px; border-radius: 12px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+        }
+        .confirm-btn.cancel { background: rgba(255,255,255,0.08); color: #a3a3a3; }
+        .confirm-btn.cancel:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        .confirm-btn.danger { background: var(--netflix-red); color: #fff; }
+        .confirm-btn.danger:hover { background: #ff121d; }
+
+        /* 卡片主體 */
         .card {
+            position: relative;
             background: var(--card-bg);
             backdrop-filter: blur(30px) saturate(190%);
             -webkit-backdrop-filter: blur(30px) saturate(190%);
@@ -56,16 +136,127 @@
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65), 
                         inset 0 1px 0 rgba(255, 255, 255, 0.1);
             border: 1px solid var(--border-light);
-            transform: translateY(0);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+            opacity: 0;
+            transform: translateY(20px) scale(0.98);
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), 
+                        opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), 
+                        box-shadow 0.4s ease;
+        }
+        .card.active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
         }
 
-        /* 狀態外框與頭像 */
+        /* 右上角使用者頭像選單區塊 */
+        .header-profile {
+            position: absolute;
+            top: 18px;
+            right: 20px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .profile-trigger {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 8px 4px 4px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .profile-trigger:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        .profile-trigger:active {
+            transform: scale(0.96);
+        }
+
+        .nav-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+
+        .nav-username {
+            font-size: 11px;
+            font-weight: 700;
+            color: #e5e5e5;
+            max-width: 70px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 下拉選單 */
+        .profile-dropdown {
+            position: absolute;
+            top: 45px;
+            right: 0;
+            background: #181818;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            width: 130px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            opacity: 0;
+            transform: translateY(-8px) scale(0.95);
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+            z-index: 20;
+        }
+
+        .profile-dropdown.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .dropdown-item {
+            padding: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #d4d4d4;
+            text-align: center;
+            transition: all 0.2s ease;
+            background: none;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .dropdown-item:hover {
+            background: var(--netflix-red);
+            color: #ffffff;
+        }
+
+        /* 狀態外框與大頭像 */
         .status-wrapper {
             position: relative;
             width: 110px;
             height: 110px;
-            margin: 0 auto 24px;
+            margin: 12px auto 24px;
+        }
+
+        .login-avatar-wrapper {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            margin: 0 auto 16px;
+        }
+        .login-avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            object-fit: cover;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
         }
 
         .user-avatar {
@@ -99,14 +290,26 @@
             margin-bottom: 30px;
             line-height: 1.6;
             font-weight: 500;
+            transition: opacity 0.3s ease;
         }
 
-        /* 表單選單 */
+        /* 表單選單群組動畫 */
         .select-group {
             text-align: left;
             margin-bottom: 16px;
             width: 100%;
-            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            opacity: 1;
+            transform: translateY(0);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+        
+        .select-group.hide-animate {
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
+            margin-bottom: 0;
+            height: 0;
+            overflow: hidden;
         }
 
         .select-label {
@@ -125,8 +328,8 @@
             width: 100%;
         }
 
-        select {
-            background: rgba(0, 0, 0, 0.4) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a3a3a3'%3E%3Cpath d='M6 9L1 4h10z'/%3E%3C/svg%3E") no-repeat right 16px center;
+        select, input[type="password"] {
+            background: rgba(0, 0, 0, 0.4);
             color: #f5f5f5;
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 14px 20px;
@@ -135,19 +338,22 @@
             border-radius: 14px;
             width: 100%;
             outline: none;
-            appearance: none;
-            -webkit-appearance: none;
             transition: all 0.25s ease;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
         }
 
-        select:focus {
+        select {
+            background: rgba(0, 0, 0, 0.4) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a3a3a3'%3E%3Cpath d='M6 9L1 4h10z'/%3E%3C/svg%3E") no-repeat right 16px center;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        select:focus, input[type="password"]:focus {
             border-color: rgba(255, 255, 255, 0.25);
             background-color: rgba(10, 10, 10, 0.85);
             box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
         }
 
-        /* 按鈕 */
         .btn {
             background-color: #ffffff;
             color: var(--netflix-black);
@@ -159,20 +365,20 @@
             cursor: pointer;
             width: 100%;
             margin-top: 12px;
-            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             letter-spacing: 0.5px;
         }
 
         .btn:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,255,255,0.15);
         }
 
         .btn.busy-btn {
             background-color: var(--netflix-red);
             color: #ffffff;
-            box-shadow: 0 6px 24 rgba(229, 9, 20, 0.35);
+            box-shadow: 0 6px 24px rgba(229, 9, 20, 0.35);
         }
 
         .btn.busy-btn:hover:not(:disabled) {
@@ -180,7 +386,21 @@
             box-shadow: 0 8px 28px rgba(229, 9, 20, 0.45);
         }
 
-        /* 🆕 按鈕被鎖定（停用）時的樣式 */
+        /* 強制解鎖按鈕特殊樣式 */
+        .btn.force-btn {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            font-size: 13px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            margin-top: 8px;
+        }
+        .btn.force-btn:hover {
+            background-color: rgba(239, 68, 68, 0.1);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+        }
+
         .btn:disabled {
             background-color: #262626 !important;
             color: #525252 !important;
@@ -190,10 +410,9 @@
         }
 
         .btn:active:not(:disabled) { 
-            transform: scale(0.97); 
+            transform: translateY(0) scale(0.96); 
         }
 
-        /* 在線人數計數器 */
         .online-counter {
             margin-top: 26px;
             font-size: 12px;
@@ -220,12 +439,6 @@
             animation: blink 1.5s infinite alternate;
         }
 
-        /* 動畫效果 */
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
         @keyframes blink {
             from { opacity: 0.4; }
             to { opacity: 1; }
@@ -240,23 +453,63 @@
 </head>
 <body>
 
-    <div class="card">
+    <div id="toast" class="toast-notification"></div>
+
+    <div id="confirmOverlay" class="confirm-overlay">
+        <div class="confirm-box">
+            <div id="confirmTitle" class="confirm-title">確定要執行此操作嗎？</div>
+            <div class="confirm-btns">
+                <button id="confirmCancelBtn" class="confirm-btn cancel">取消</button>
+                <button id="confirmDangerBtn" class="confirm-btn danger">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loginCard" class="card">
+        <div class="login-avatar-wrapper">
+            <img id="loginAvatar" class="login-avatar" src="https://lh3.googleusercontent.com/d/10pwnPxb8vho0vIuubjR_rW265g-k3cRj" alt="Login Avatar">
+        </div>
+        <div class="status-text" style="color: var(--netflix-red); font-size: 26px; margin-bottom: 6px;">網飛錯時師</div>
+        <div class="user-text" style="margin-bottom: 24px;">輸入成員身分與密碼進行裝置綁定。</div>
+        
+        <div class="select-group">
+            <label class="select-label">選擇你的名字</label>
+            <div class="select-wrapper">
+                <select id="loginUserSelect">
+                    <option value="lijerry">lijerry</option>
+                    <option value="小揖ΛτλαnTIs">小揖Λτλαnτιs</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="select-group">
+            <label class="select-label">輸入通行密碼</label>
+            <div class="select-wrapper">
+                <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+            </div>
+        </div>
+
+        <button id="loginBtn" class="btn" style="background-color: var(--netflix-red); color: white; margin-top: 20px;">確認登入</button>
+    </div>
+
+    <div id="mainCard" class="card">
+        
+        <div class="header-profile" id="headerProfile">
+            <div class="profile-trigger" id="profileTrigger">
+                <img id="navAvatar" class="nav-avatar" src="https://lh3.googleusercontent.com/d/10pwnPxb8vho0vIuubjR_rW265g-k3cRj" alt="Nav Avatar">
+                <span id="navUsername" class="nav-username">載入中</span>
+            </div>
+            <div class="profile-dropdown" id="profileDropdown">
+                <button class="dropdown-item" id="logoutBtn">🚪 登出身分</button>
+            </div>
+        </div>
+
         <div class="status-wrapper">
             <img id="userAvatar" class="user-avatar" src="https://lh3.googleusercontent.com/d/10pwnPxb8vho0vIuubjR_rW265g-k3cRj" alt="Avatar">
         </div>
 
         <div id="statusText" class="status-text">連線中...</div>
         <div id="userText" class="user-text">正在讀取最新數據庫狀態</div>
-
-        <div class="select-group" id="userGroup">
-            <label class="select-label">使用成員</label>
-            <div class="select-wrapper">
-                <select id="userSelect">
-                    <option value="lijerry">lijerry</option>
-                    <option value="小揖ΛτλαnTIs">小揖Λτλαnτιs</option>
-                </select>
-            </div>
-        </div>
 
         <div class="select-group" id="modeGroup">
             <label class="select-label">觀看模式</label>
@@ -281,19 +534,8 @@
             </div>
         </div>
 
-        <div class="select-group" id="mentionGroup">
-            <label class="select-label">通知對象 (Discord @)</label>
-            <div class="select-wrapper">
-                <select id="mentionSelect">
-                    <option value="none">🚫 不通知任何人</option>
-                    <option value="everyone">📢 @everyone (全員)</option>
-                    <option value="lijerry">👤 @lijerry</option>
-                    <option value="小揖ΛτλαnTIs">👤 @小揖ΛτλαnTIs</option>
-                </select>
-            </div>
-        </div>
-
         <button id="toggleBtn" class="btn">請稍候</button>
+        <button id="forceReleaseBtn" class="btn force-btn" style="display: none;">⚠️ 對方忘記關？強制釋放</button>
         
         <div class="online-counter">
             當前在線：<span id="onlineCount" style="color: #f5f5f5; margin: 0 2px;">0</span>人
@@ -307,6 +549,11 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
         }
+
+        const userPasswords = {
+            "lijerry": "380321",          
+            "小揖ΛτλαnTIs": "20120623"      
+        };
 
         const firebaseConfig = {
             apiKey: "AIzaSyAAYQduNLkf_27N7Q97fyVRrK7KEZEq-i4",
@@ -325,7 +572,6 @@
         const discordWebhookUrl = "https://discord.com/api/webhooks/1515276194956968117/-v4bXCUgMTy8P-7YjjafPJp1EZRgIb61oI2-iajdEnssSZ9Z4RqFNhdKTYnFbVOWC-Ca";
 
         const discordIdMap = {
-            "everyone": "everyone",
             "lijerry": "965160772600729601",   
             "小揖ΛτλαnTIs": "1302615048086225013"       
         };
@@ -336,36 +582,163 @@
             "小揖ΛτλαnTIs": "https://lh3.googleusercontent.com/d/12uWJafonhbE2QBfUjmwLo2DeFSXn-6Vt" 
         };
 
+        // DOM 元素
+        const loginCard = document.getElementById('loginCard');
+        const mainCard = document.getElementById('mainCard');
+        const loginUserSelect = document.getElementById('loginUserSelect');
+        const loginPassword = document.getElementById('loginPassword');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginAvatar = document.getElementById('loginAvatar');
+        
+        const profileTrigger = document.getElementById('profileTrigger');
+        const profileDropdown = document.getElementById('profileDropdown');
+        const navAvatar = document.getElementById('navAvatar');
+        const navUsername = document.getElementById('navUsername');
+        const logoutBtn = document.getElementById('logoutBtn');
+
         const userAvatar = document.getElementById('userAvatar');
         const statusText = document.getElementById('statusText');
         const userText = document.getElementById('userText');
         const toggleBtn = document.getElementById('toggleBtn');
-        const userSelect = document.getElementById('userSelect');
+        const forceReleaseBtn = document.getElementById('forceReleaseBtn');
         const modeSelect = document.getElementById('modeSelect');
         const deviceSelect = document.getElementById('deviceSelect');
-        const mentionSelect = document.getElementById('mentionSelect'); 
-        const userGroup = document.getElementById('userGroup'); 
         const modeGroup = document.getElementById('modeGroup');
         const deviceGroup = document.getElementById('deviceGroup');
-        const mentionGroup = document.getElementById('mentionGroup');
         const onlineCount = document.getElementById('onlineCount');
+
+        let toastTimer = null;
+        function showToast(text, type = "info") {
+            const toast = document.getElementById('toast');
+            toast.innerText = text;
+            toast.className = `toast-notification ${type} show`;
+            
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        let onConfirmCallback = null;
+        function showConfirm(titleText, onConfirm) {
+            document.getElementById('confirmTitle').innerText = titleText;
+            document.getElementById('confirmOverlay').classList.add('show');
+            onConfirmCallback = onConfirm;
+        }
+        document.getElementById('confirmCancelBtn').addEventListener('click', () => {
+            document.getElementById('confirmOverlay').classList.remove('show');
+        });
+        document.getElementById('confirmDangerBtn').addEventListener('click', () => {
+            document.getElementById('confirmOverlay').classList.remove('show');
+            if (onConfirmCallback) onConfirmCallback();
+        });
         
         let currentStatus = false;
         let currentUserName = "";
         let currentWatchMode = "";
         let currentDevice = "";
+        let currentUserToken = ""; 
 
-        if(localStorage.getItem('netflix_name')) { userSelect.value = localStorage.getItem('netflix_name'); }
+        function generateToken() {
+            return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        }
+
+        let myName = localStorage.getItem('netflix_name');
+        let myToken = localStorage.getItem('netflix_token');
+
+        function updateLoginAvatar() {
+            const selectedName = loginUserSelect.value;
+            loginAvatar.style.transform = "scale(0.8) rotate(-5deg)";
+            loginAvatar.style.opacity = "0.3";
+            
+            setTimeout(() => {
+                loginAvatar.src = avatarMap[selectedName] || avatarMap["default"];
+                loginAvatar.style.transform = "scale(1) rotate(0deg)";
+                loginAvatar.style.opacity = "1";
+            }, 180);
+        }
+        loginUserSelect.addEventListener('change', updateLoginAvatar);
+
+        function checkAuth() {
+            if (!myName || !myToken) {
+                mainCard.classList.remove('active');
+                setTimeout(() => {
+                    mainCard.style.display = 'none';
+                    loginCard.style.display = 'block';
+                    setTimeout(() => loginCard.classList.add('active'), 50);
+                }, 300);
+                loginPassword.value = ""; 
+                updateLoginAvatar(); 
+            } else {
+                loginCard.classList.remove('active');
+                setTimeout(() => {
+                    loginCard.style.display = 'none';
+                    mainCard.style.display = 'block';
+                    setTimeout(() => mainCard.classList.add('active'), 50);
+                }, 300);
+                
+                navUsername.innerText = myName;
+                navAvatar.src = avatarMap[myName] || avatarMap["default"];
+            }
+        }
+        setTimeout(checkAuth, 100);
+
+        profileTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.toggle('show');
+        });
+
+        document.addEventListener('click', () => {
+            profileDropdown.classList.remove('show');
+        });
+
+        loginBtn.addEventListener('click', () => {
+            const selectedName = loginUserSelect.value;
+            const inputPwd = loginPassword.value;
+            const correctPwd = userPasswords[selectedName];
+            
+            if (inputPwd === correctPwd) {
+                const newToken = generateToken();
+                localStorage.setItem('netflix_name', selectedName);
+                localStorage.setItem('netflix_token', newToken);
+                
+                myName = selectedName;
+                myToken = newToken;
+                checkAuth();
+                showToast("✨ 成功綁定裝置！歡迎回來", "success");
+            } else {
+                showToast("❌ 密碼輸入錯誤，請再試一次！", "error");
+                loginPassword.value = "";
+                loginPassword.focus();
+            }
+        });
+
+        loginPassword.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { loginBtn.click(); }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            if (currentStatus && myToken === currentUserToken) {
+                showToast("⚠️ 你目前正在觀看中，請先釋放帳號才能登出！", "error");
+                return;
+            }
+            showConfirm("確定要登出並取消此裝置的身分綁定嗎？", () => {
+                localStorage.removeItem('netflix_name');
+                localStorage.removeItem('netflix_token');
+                myName = null;
+                myToken = null;
+                checkAuth();
+                showToast("🚪 已成功清除身分綁定", "info");
+            });
+        });
+
         if(localStorage.getItem('netflix_mode')) { modeSelect.value = localStorage.getItem('netflix_mode'); }
         if(localStorage.getItem('netflix_device')) { deviceSelect.value = localStorage.getItem('netflix_device'); }
-        if(localStorage.getItem('netflix_mention')) { mentionSelect.value = localStorage.getItem('netflix_mention'); }
         
-        userSelect.addEventListener('change', () => localStorage.setItem('netflix_name', userSelect.value));
         modeSelect.addEventListener('change', () => localStorage.setItem('netflix_mode', modeSelect.value));
         deviceSelect.addEventListener('change', () => localStorage.setItem('netflix_device', deviceSelect.value));
-        mentionSelect.addEventListener('change', () => localStorage.setItem('netflix_mention', mentionSelect.value));
 
-        // 在線人數監聽
+        // 🟢 物理鎖核心：這裡只處理在線計數，絕對不在離線時重設 isUsing 狀態
         const myPresenceRef = presenceRef.push();
         database.ref('.info/connected').on('value', (snapshot) => {
             if (snapshot.val() === true) {
@@ -377,6 +750,40 @@
             onlineCount.innerText = snapshot.numChildren();
         });
 
+        // 發送 Discord 訊息
+        function sendDiscordNotification(activeUser, targetUser, isStarting, selectedMode, selectedDevice, isForced = false) {
+            if (!discordWebhookUrl) return;
+
+            let message = "";
+            let mentionString = "";
+            let targetId = discordIdMap[targetUser];
+            
+            if (targetId) { mentionString = `<@${targetId}> `; }
+
+            if (isStarting) {
+                if (selectedMode === "正在下載影片") {
+                    message = `${mentionString}📥 **${activeUser}** 正在用【${selectedDevice}】下載 Netflix 影片，可能會佔用部分網速喔！`;
+                } else {
+                    message = `${mentionString}🔴 **${activeUser}** 開始用【${selectedDevice}】👉【${selectedMode}】觀看 Netflix 囉！`;
+                }
+            } else {
+                if (isForced) {
+                    message = `${mentionString}⚠️ **${activeUser}** 判定對方的裝置已休眠或忘記關閉，已將 **${targetUser}** 的狀態強制釋放！帳號現在空閒囉。`;
+                } else {
+                    message = `${mentionString}🟢 **${activeUser}** 已經看完囉！帳號已釋放，想看的人可以上線了。`;
+                }
+            }
+            
+            fetch(discordWebhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    content: message,
+                    allowed_mentions: { parse: ["users"] } 
+                })
+            }).catch(err => console.log("DC通知錯誤:", err));
+        }
+
         // 監聽雲端狀態
         database.ref('netflix').on('value', (snapshot) => {
             const data = snapshot.val() || {};
@@ -384,9 +791,7 @@
             currentUserName = data.currentUser || "";
             currentWatchMode = data.watchMode || "";
             currentDevice = data.device || "電視";
-            
-            // 獲取目前「打開網頁的這台裝置」儲存的名字是什麼
-            const myStoredName = localStorage.getItem('netflix_name') || userSelect.value;
+            currentUserToken = data.currentUserToken || ""; 
 
             if (currentStatus) {
                 userAvatar.classList.add('busy');
@@ -402,90 +807,75 @@
                 statusText.style.color = 'var(--netflix-red)';
                 userText.innerHTML = `🎬 使用者：<strong style="color:white">${currentUserName}</strong><br>ℹ️ 狀態：<span style="color:#d4d4d4">${currentWatchMode} (${currentDevice})</span>`;
                 
-                // 🆕 核心防錯安全鎖：只有當前觀看者的網頁可以點擊「釋放」，其他人按鈕會被禁用
-                if (myStoredName === currentUserName) {
+                if (myToken === currentUserToken) {
                     toggleBtn.innerText = '我看完了（釋放帳號）';
                     toggleBtn.classList.add('busy-btn');
                     toggleBtn.disabled = false;
-                    mentionGroup.style.display = "block"; 
+                    forceReleaseBtn.style.display = 'none'; // 自己在看，不需要強制解鎖
                 } else {
                     toggleBtn.innerText = `🔒 只有 ${currentUserName} 能釋放狀態`;
                     toggleBtn.classList.remove('busy-btn');
-                    toggleBtn.disabled = true; // 鎖定按鈕，防止別人不小心點到！
-                    mentionGroup.style.display = "none"; 
+                    toggleBtn.disabled = true; 
+                    forceReleaseBtn.style.display = 'block'; // 別人在看，顯示後備防呆「強制解鎖」按鈕
                 }
                 
-                userGroup.style.display = "none";
-                modeGroup.style.display = "none";
-                deviceGroup.style.display = "none";
+                modeGroup.classList.add('hide-animate');
+                deviceGroup.classList.add('hide-animate');
             } else {
                 userAvatar.classList.remove('busy');
                 userAvatar.src = avatarMap["default"];
                 
                 statusText.innerText = '目前沒人使用，衝啊！';
                 statusText.style.color = 'var(--netflix-green)';
-                userText.innerHTML = `🟢 帳號目前空閒中<br><span style="color:#737373; font-size:12px;">選好身分與模式即可一鍵佔位</span>`;
+                userText.innerHTML = `🟢 帳號目前空閒中<br><span style="color:#737373; font-size:12px;">當前登入者：${myName}</span>`;
                 toggleBtn.innerText = '我要開始看 Netflix';
                 toggleBtn.classList.remove('busy-btn');
-                toggleBtn.disabled = false; // 空閒時所有人都可以點擊
+                toggleBtn.disabled = false; 
+                forceReleaseBtn.style.display = 'none';
                 
-                userGroup.style.display = "block";
-                modeGroup.style.display = "block";
-                deviceGroup.style.display = "block";
-                mentionGroup.style.display = "block"; 
+                modeGroup.classList.remove('hide-animate');
+                deviceGroup.classList.remove('hide-animate');
             }
         });
 
-        // 點擊事件
+        // 正常按鈕點擊控制
         toggleBtn.addEventListener('click', () => {
-            if (toggleBtn.disabled) return; // 安全保護
+            if (toggleBtn.disabled) return; 
 
-            const selectedName = userSelect.value;
             const selectedMode = modeSelect.value;
             const selectedDevice = deviceSelect.value;
-            const selectedMention = mentionSelect.value; 
             const nextStatus = !currentStatus;
-
-            const activeUser = nextStatus ? selectedName : currentUserName;
+            const activeUser = nextStatus ? myName : currentUserName;
 
             database.ref('netflix').update({
                 isUsing: nextStatus,
-                currentUser: nextStatus ? selectedName : "",
+                currentUser: nextStatus ? myName : "",
+                currentUserToken: nextStatus ? myToken : "", 
                 watchMode: nextStatus ? selectedMode : "",
                 device: nextStatus ? selectedDevice : ""
             }).then(() => {
-                if (discordWebhookUrl) {
-                    let message = "";
-                    let mentionString = "";
+                showToast(nextStatus ? "🔴 狀態已更新：觀看中！" : "🟢 狀態已更新：帳號已釋放！", "success");
+                let targetUser = (activeUser === "lijerry") ? "小揖ΛτλαnTIs" : "lijerry";
+                sendDiscordNotification(activeUser, targetUser, nextStatus, selectedMode, selectedDevice);
+            });
+        });
 
-                    if (selectedMention !== "none") {
-                        const targetId = discordIdMap[selectedMention];
-                        if (targetId === "everyone") {
-                            mentionString = "@everyone ";
-                        } else if (targetId) {
-                            mentionString = `<@${targetId}> `; 
-                        }
-                    }
-
-                    if (nextStatus) {
-                        if (selectedMode === "正在下載影片") {
-                            message = `${mentionString}📥 **${activeUser}** 正在用【${selectedDevice}】下載 Netflix 影片，可能會佔用部分網速喔！`;
-                        } else {
-                            message = `${mentionString}🔴 **${activeUser}** 開始用【${selectedDevice}】👉【${selectedMode}】觀看 Netflix 囉！`;
-                        }
-                    } else {
-                        message = `${mentionString}🟢 **${activeUser}** 已經看完囉！帳號已釋放，想看的人可以上線了。`;
-                    }
-                    
-                    fetch(discordWebhookUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            content: message,
-                            allowed_mentions: { parse: ["everyone", "users"] } 
-                        })
-                    }).catch(err => console.log("DC通知錯誤:", err));
-                }
+        // 🚨 後備防呆機制：強制釋放對方忘記關閉的狀態
+        forceReleaseBtn.addEventListener('click', () => {
+            showConfirm(`確定要強制解除 ${currentUserName} 的鎖定狀態嗎？(請先確認對方不是正在看喔)`, () => {
+                const previousUser = currentUserName; // 記住被解鎖的人是誰
+                
+                database.ref('netflix').update({
+                    isUsing: false,
+                    currentUser: "",
+                    currentUserToken: "",
+                    watchMode: "",
+                    device: ""
+                }).then(() => {
+                    showToast("🔓 已強制重置狀態為空閒！", "info");
+                    // 發送強制解鎖通知到 Discord，通知對方狀態被踢掉了
+                    sendDiscordNotification(myName, previousUser, false, "", "", true);
+                });
             });
         });
     </script>
