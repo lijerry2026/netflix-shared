@@ -3,79 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Netflix 狀態同步器</title>
+    <title>Netflix 共享狀態艙</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#141414">
     <style>
+        :root {
+            --netflix-red: #e50914;
+            --netflix-black: #141414;
+            --netflix-green: #46d369;
+        }
         body {
-            background-color: #141414;
+            background: radial-gradient(circle at center, #2b2b2b 0%, var(--netflix-black) 100%);
             color: white;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
             margin: 0;
+            overflow: hidden;
         }
-        .status-container {
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 35px;
+            width: 85%;
+            max-width: 400px;
             text-align: center;
-            margin-bottom: 40px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .status-dot {
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             margin: 0 auto 20px;
-            background-color: #46d369;
-            box-shadow: 0 0 20px #46d369;
-            transition: all 0.3s ease;
+            background-color: var(--netflix-green);
+            box-shadow: 0 0 30px var(--netflix-green);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .status-dot.busy {
-            background-color: #e50914;
-            box-shadow: 0 0 20px #e50914;
+            background-color: var(--netflix-red);
+            box-shadow: 0 0 30px var(--netflix-red);
+            transform: scale(1.05);
         }
         .status-text {
-            font-size: 24px;
-            font-weight: bold;
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        .user-text {
+            font-size: 16px;
+            color: #b3b3b3;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+        select {
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 10px;
+            width: 100%;
+            margin-bottom: 15px;
+            outline: none;
+            box-sizing: border-box;
         }
         .btn {
-            background-color: #ffffff;
-            color: #141414;
+            background-color: white;
+            color: var(--netflix-black);
             border: none;
-            padding: 15px 40px;
+            padding: 16px;
             font-size: 18px;
             font-weight: bold;
-            border-radius: 30px;
+            border-radius: 12px;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-        .btn:active {
-            transform: scale(0.98);
+        .btn:active { transform: scale(0.98); }
+        .online-counter {
+            margin-top: 25px;
+            font-size: 13px;
+            color: #808080;
+            background: rgba(0,0,0,0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: inline-block;
         }
     </style>
 </head>
 <body>
 
-    <div class="status-container">
+    <div class="card">
         <div id="statusDot" class="status-dot"></div>
-        <div id="statusText" class="status-text">目前沒人使用，衝啊！</div>
-    </div>
+        <div id="statusText" class="status-text">載入中...</div>
+        <div id="userText" class="user-text">正在偵測雲端狀態</div>
 
-    <button id="toggleBtn" class="btn">我要開始看 Netflix</button>
+        <select id="userSelect">
+            <option value="lijerry">我是：lijerry</option>
+            <option value="小揖Λτλαnτιs">我是：小揖Λτλαnτιs</option>
+        </select>
+
+        <select id="modeSelect">
+            <option value="在線看">模式：在線看</option>
+            <option value="離線看">模式：離線看</option>
+            <option value="正在下載影片">模式：正在下載影片</option>
+        </select>
+
+        <button id="toggleBtn" class="btn">請稍候</button>
+        
+        <div class="online-counter">
+            ● 當前在線人數：<span id="onlineCount">0</span> 人
+        </div>
+    </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
 
     <script>
-        // 註冊 PWA Service Worker
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(() => console.log('Service Worker 註冊成功！'))
-                .catch(err => console.log('註冊失敗：', err));
+            navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
         }
 
-        // 貼上你截圖中的 Firebase 設定（已手動補上 databaseURL）
+        // Firebase 設定
         const firebaseConfig = {
             apiKey: "AIzaSyAAYQduNLkf_27N7Q97fyVRrK7KEZEq-i4",
             authDomain: "netflix-status-73cbc.firebaseapp.com",
@@ -86,42 +142,113 @@
             appId: "1:125309083411:web:e358f870ddba159c1444e6"
         };
 
-        // 初始化 Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        
         const netflixStatusRef = database.ref('netflix/isUsing');
+        const presenceRef = database.ref('netflix/onlineUsers');
+
+        // Discord Webhook 設定（若有需要請在此處貼上網址）
+        const discordWebhookUrl = "這裡貼上你的_DISCORD_WEBHOOK_網址";
 
         const statusDot = document.getElementById('statusDot');
         const statusText = document.getElementById('statusText');
+        const userText = document.getElementById('userText');
         const toggleBtn = document.getElementById('toggleBtn');
+        const userSelect = document.getElementById('userSelect');
+        const modeSelect = document.getElementById('modeSelect');
+        const onlineCount = document.getElementById('onlineCount');
         
         let currentStatus = false;
+        let currentUserName = "";
+        let currentWatchMode = "";
 
-        // 監聽雲端資料庫變動
-        netflixStatusRef.on('value', (snapshot) => {
-            currentStatus = snapshot.val() || false;
-            updateUI(currentStatus);
+        // 記憶本地選過的名字與模式
+        if(localStorage.getItem('netflix_name')) {
+            userSelect.value = localStorage.getItem('netflix_name');
+        }
+        if(localStorage.getItem('netflix_mode')) {
+            modeSelect.value = localStorage.getItem('netflix_mode');
+        }
+        
+        userSelect.addEventListener('change', () => {
+            localStorage.setItem('netflix_name', userSelect.value);
+        });
+        modeSelect.addEventListener('change', () => {
+            localStorage.setItem('netflix_mode', modeSelect.value);
         });
 
-        function updateUI(isUsing) {
-            if (isUsing) {
+        // 在線人數偵測
+        const myPresenceRef = presenceRef.push();
+        database.ref('.info/connected').on('value', (snapshot) => {
+            if (snapshot.val() === true) {
+                myPresenceRef.onDisconnect().remove();
+                myPresenceRef.set(true);
+            }
+        });
+        presenceRef.on('value', (snapshot) => {
+            onlineCount.innerText = snapshot.numChildren();
+        });
+
+        // 監聽雲端資料庫變動
+        database.ref('netflix').on('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            currentStatus = data.isUsing || false;
+            currentUserName = data.currentUser || "";
+            currentWatchMode = data.watchMode || "";
+            
+            if (currentStatus) {
                 statusDot.classList.add('busy');
                 statusText.innerText = '有人正在看，先等等！';
+                userText.innerHTML = `🎬 使用者：${currentUserName}<br>ℹ️ 狀態：${currentWatchMode}`;
                 toggleBtn.innerText = '我看完了（釋放帳號）';
                 toggleBtn.style.backgroundColor = '#e50914';
                 toggleBtn.style.color = 'white';
+                // 有人使用時，隱藏模式選單避免混淆
+                modeSelect.style.display = "none";
             } else {
                 statusDot.classList.remove('busy');
                 statusText.innerText = '目前沒人使用，衝啊！';
+                userText.innerText = `🟢 帳號目前空閒中`;
                 toggleBtn.innerText = '我要開始看 Netflix';
                 toggleBtn.style.backgroundColor = '#ffffff';
                 toggleBtn.style.color = '#141414';
+                // 沒人使用時，重新顯示模式選單
+                modeSelect.style.display = "block";
             }
-        }
+        });
 
-        // 點擊修改雲端狀態
+        // 點擊事件
         toggleBtn.addEventListener('click', () => {
-            netflixStatusRef.set(!currentStatus);
+            const selectedName = userSelect.value;
+            const selectedMode = modeSelect.value;
+            const nextStatus = !currentStatus;
+
+            database.ref('netflix').update({
+                isUsing: nextStatus,
+                currentUser: nextStatus ? selectedName : "",
+                watchMode: nextStatus ? selectedMode : ""
+            }).then(() => {
+                // Discord 通知
+                if (discordWebhookUrl && discordWebhookUrl !== "這裡貼上你的_DISCORD_WEBHOOK_網址") {
+                    let message = "";
+                    if (nextStatus) {
+                        if (selectedMode === "正在下載影片") {
+                            message = `📥 **${selectedName}** 正在【下載 Netflix 影片】，可能會佔用部分網速喔！`;
+                        } else {
+                            message = `🔴 **${selectedName}** 開始【${selectedMode}】觀看 Netflix 囉！`;
+                        }
+                    } else {
+                        message = `🟢 **${selectedName}** 已經看完囉！帳號已釋放，想看的人可以上線了。`;
+                    }
+                    
+                    fetch(discordWebhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: message })
+                    }).catch(err => console.log("DC通知發送失敗:", err));
+                }
+            });
         });
     </script>
 </body>
