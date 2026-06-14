@@ -708,6 +708,18 @@
         let myName = localStorage.getItem('netflix_name');
         let myToken = localStorage.getItem('netflix_token');
 
+        // 🌐 免費輔助函式：非同步獲取當前連線的外網 IP
+        async function getClientIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip || "未知 IP";
+            } catch (err) {
+                console.log("無法獲取 IP:", err);
+                return "抓取失敗 IP";
+            }
+        }
+
         function updateLoginAvatar() {
             const selectedName = loginUserSelect.value;
             loginAvatar.style.transform = "scale(0.8) rotate(-5deg)";
@@ -1083,7 +1095,7 @@
                     statusText.style.color = 'var(--netflix-red)';
                     userText.innerHTML = `⏳ 錯時防撞鎖定中<br><span style="color:#737373; font-size:12px;">前一位釋放者：${serverLastReleaseUser}</span>`;
                     
-                    // ✨ 核心修正：當頁面處理於冷卻倒數介面時，強制隱藏「⚠️ 強制釋放」按鈕
+                    // ✨ 核心邏輯：當頁面處理於冷卻倒數介面時，強制隱藏「⚠️ 強制釋放」按鈕
                     forceReleaseBtn.style.display = 'none'; 
                     
                     modeGroup.classList.add('hide-animate');
@@ -1126,8 +1138,11 @@
         });
 
         // 開始 / 結束 按鈕點擊主控邏輯
-        toggleBtn.addEventListener('click', () => {
+        toggleBtn.addEventListener('click', async () => {
             if (toggleBtn.disabled) return; 
+
+            // 🔍 點擊當下，異步撈取使用者的公共 IP
+            const currentIP = await getClientIP();
 
             const selectedMode = modeSelect.value;
             const selectedDevice = deviceSelect.value;
@@ -1145,7 +1160,8 @@
                 watchMode: nextStatus ? selectedMode : "",
                 device: nextStatus ? selectedDevice : "" ,
                 startTime: nextStatus ? nowMs : 0 ,
-                lastUrgeTime: nextStatus ? 0 : (serverLastUrgeTime || 0) 
+                lastUrgeTime: nextStatus ? 0 : (serverLastUrgeTime || 0),
+                userIP: currentIP // ✨ 將撈到的 IP 同步寫入雲端
             };
 
             if (!nextStatus) {
@@ -1181,9 +1197,12 @@
             });
         });
 
-        // 🚨 強制釋放按鈕 (保留 10 分鐘冷卻，且冷卻介面會自動隱藏此按鈕)
+        // 🚨 強制釋放按鈕 (保留 10 分鐘冷卻，冷卻介面會自動隱藏，且會抓取操作者 IP)
         forceReleaseBtn.addEventListener('click', () => {
-            showConfirm(`確定要強制解除鎖定狀態嗎？(請先確認對方不是正在看喔)`, () => {
+            showConfirm(`確定要強制解除鎖定狀態嗎？(請先確認對方不是正在看喔)`, async () => {
+                // 🔍 點擊當下，異步撈取執行強制釋放的人的 IP
+                const currentIP = await getClientIP();
+
                 const previousUser = currentUserName || serverLastReleaseUser; 
                 const nowMs = Date.now();
                 const cooldownEndTime = nowMs + COOLDOWN_DURATION;
@@ -1206,7 +1225,8 @@
                     lastUrgeTime: 0,
                     cooldownEndTime: cooldownEndTime,       
                     lastReleaseUser: myName, // 標記是誰執行了強制重置
-                    hasNotifiedEnd: false      
+                    hasNotifiedEnd: false,
+                    userIP: currentIP // ✨ 記錄是哪個 IP 執行了強制解鎖
                 }).then(() => {
                     showToast("🔓 已強制重置狀態！系統進入 10 分鐘冷卻", "info");
                     // 傳送強制解鎖與冷卻提示到 Discord
