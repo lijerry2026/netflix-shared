@@ -661,11 +661,13 @@
         let usageInterval = null;
         let cooldownInterval = null;
         let urgeCooldownInterval = null; 
-        let discordTimeoutId = null; 
         
         // 記憶雲端傳回來的時間數據
         let currentWatchStartTimeStamp = 0; 
-        let serverLastUrgeTime = 0; // 🔔 儲存從伺服器取得的最新催促時間戳
+        let serverLastUrgeTime = 0; 
+        let serverCooldownEndTime = 0;       // 🆕 儲存雲端同步的冷卻結束時間戳
+        let serverLastReleaseUser = "";     // 🆕 儲存上一個釋放帳號的人
+        let serverHasNotifiedEnd = true;    // 🆕 儲存冷卻結束通知是否已發送過
 
         let toastTimer = null;
         function showToast(text, type = "info") {
@@ -900,7 +902,6 @@
                 const seconds = Math.floor((elapsed % 60000) / 1000);
                 usedTimeDisplay.textContent = `已使用時間：${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
                 
-                // 每秒計時動態檢查：當別人看滿一個小時 (60分鐘) 且當前不是自己在使用時，才讓催促按鈕出現
                 if (currentStatus && myToken !== currentUserToken) {
                     if (elapsed >= 60 * 60 * 1000) { 
                         if (urgeBtn.style.display === 'none') {
@@ -920,29 +921,41 @@
         }
 
         // ==========================================
-        // 核心功能：3. 結束後 10 分鐘冷卻限制
+        // 🆕 核心功能：3. 全雲端同步 10 分鐘冷卻限制 (防網頁關閉失效)
         // ==========================================
         function checkAndRunCooldown() {
-            const lastEndTime = localStorage.getItem('netflix_cooldown_end_time');
-            if (!lastEndTime) return false;
+            if (!serverCooldownEndTime) return false;
 
-            const timeLeft = parseInt(lastEndTime) - Date.now();
+            const timeLeft = serverCooldownEndTime - Date.now();
+            
+            // 🆕 如果冷卻時間「已經到了」，且雲端紀錄為「尚未發送通知」
             if (timeLeft <= 0) {
-                localStorage.removeItem('netflix_cooldown_end_time');
-                if (discordTimeoutId) clearTimeout(discordTimeoutId);
+                if (!serverHasNotifiedEnd) {
+                    // 將雲端的已通知狀態改為 true (搶先改寫，避免多人同時打開重複發送)
+                    database.ref('netflix').update({ hasNotifiedEnd: true });
+                    
+                    let lastUser = serverLastReleaseUser || myName;
+                    let targetUser = (lastUser === "lijerry") ? "小揖ΛτλαnTIs" : "lijerry";
+                    sendCooldownEndNotification(lastUser, targetUser);
+                }
+                if (cooldownInterval) {
+                    clearInterval(cooldownInterval);
+                    cooldownInterval = null;
+                }
                 return false;
             }
 
-            if (cooldownInterval) clearInterval(cooldownInterval);
+            // 如果冷卻中，鎖定並更新按鈕 UI
             toggleBtn.disabled = true;
 
+            if (cooldownInterval) clearInterval(cooldownInterval);
             cooldownInterval = setInterval(() => {
-                const remaining = parseInt(localStorage.getItem('netflix_cooldown_end_time')) - Date.now();
+                const remaining = serverCooldownEndTime - Date.now();
                 if (remaining <= 0) {
                     clearInterval(cooldownInterval);
                     cooldownInterval = null;
-                    localStorage.removeItem('netflix_cooldown_end_time');
                     
+                    // 當前網頁在線時倒數結束，觸發雲端通知比對
                     database.ref('netflix').get().then((snapshot) => {
                         const data = snapshot.val() || {};
                         updateUIBasedOnStatus(data);
@@ -954,22 +967,9 @@
                 }
             }, 1000);
 
-            if (!discordTimeoutId) {
-                discordTimeoutId = setTimeout(() => {
-                    let lastActiveUser = localStorage.getItem('netflix_last_release_user') || myName;
-                    let targetUser = (lastActiveUser === "lijerry") ? "小揖ΛτλαnTIs" : "lijerry";
-                    
-                    sendCooldownEndNotification(lastActiveUser, targetUser);
-                    
-                    discordTimeoutId = null;
-                    localStorage.removeItem('netflix_last_release_user');
-                }, timeLeft);
-            }
-
             return true;
         }
 
-        // 🔔 改為基於雲端 serverLastUrgeTime 的 30秒 獨立冷卻鎖定
         function checkUrgeBtnCooldown() {
             if (!serverLastUrgeTime) {
                 urgeBtn.disabled = false;
@@ -1010,7 +1010,12 @@
             currentDevice = data.device || "電視";
             currentUserToken = data.currentUserToken || ""; 
             currentWatchStartTimeStamp = data.startTime || 0; 
-            serverLastUrgeTime = data.lastUrgeTime || 0; // 🔔 即時從雲端載入最新的催促時間戳
+            serverLastUrgeTime = data.lastUrgeTime || 0; 
+            
+            // 🆕 即時載入雲端的 10 分鐘冷卻變數
+            serverCooldownEndTime = data.cooldownEndTime || 0;
+            serverLastReleaseUser = data.lastReleaseUser || "";
+            serverHasNotifiedEnd = (data.hasNotifiedEnd !== false); // 預設為已通知
 
             const isCurrentlyLocked = checkAndRunCooldown();
 
@@ -1041,7 +1046,6 @@
                     forceReleaseBtn.style.display = 'none';
                     urgeBtn.style.display = 'none'; 
                 } else {
-                    // 別人在看，藉由雲端時間開跑正計時，並動態監聽是否超過 1 小時
                     runUsageTimer(currentWatchStartTimeStamp || Date.now());
 
                     if (!isCurrentlyLocked) {
@@ -1051,11 +1055,10 @@
                     }
                     forceReleaseBtn.style.display = 'block'; 
                     
-                    // 初始渲染檢查：如果一進網頁時就已經滿 1 小時，才動態顯示催促按鈕
                     const currentElapsed = Date.now() - currentWatchStartTimeStamp;
                     if (currentWatchStartTimeStamp && currentElapsed >= 60 * 60 * 1000) {
                         urgeBtn.style.display = 'block';
-                        checkUrgeBtnCooldown(); // 這裡會自動拿伺服器的時間來計算倒數
+                        checkUrgeBtnCooldown(); 
                     } else {
                         urgeBtn.style.display = 'none';
                     }
@@ -1099,13 +1102,11 @@
 
             const nowTime = Date.now();
             
-            // 🔔 改為直接將「現在點擊的時間戳」更新到 Firebase 雲端資料庫
             database.ref('netflix').update({
                 lastUrgeTime: nowTime
             }).then(() => {
                 sendUrgeNotification(myName, currentUserName);
                 showToast("🚀 催促提醒已送出！已在 Discord 標籤對方", "success");
-                // 這裡更新後，.on('value') 會自動監聽並觸發 checkUrgeBtnCooldown() 開始倒數
             });
         });
 
@@ -1122,6 +1123,16 @@
             let totalDurationStr = "";
             const nowMs = Date.now();
 
+            let updatePayload = {
+                isUsing: nextStatus,
+                currentUser: nextStatus ? myName : "",
+                currentUserToken: nextStatus ? myToken : "", 
+                watchMode: nextStatus ? selectedMode : "",
+                device: nextStatus ? selectedDevice : "" ,
+                startTime: nextStatus ? nowMs : 0 ,
+                lastUrgeTime: nextStatus ? 0 : (serverLastUrgeTime || 0) 
+            };
+
             if (!nextStatus) {
                 if (currentWatchStartTimeStamp) {
                     const elapsedMs = nowMs - currentWatchStartTimeStamp;
@@ -1132,9 +1143,11 @@
 
                 const cooldownEndTime = nowMs + COOLDOWN_DURATION;
                 
-                localStorage.setItem('netflix_cooldown_end_time', cooldownEndTime);
-                localStorage.setItem('netflix_last_release_user', activeUser);
-                
+                // 🆕 結束觀看時，同步寫入雲端冷卻變數，而非單純寫在 LocalStorage 內
+                updatePayload.cooldownEndTime = cooldownEndTime;
+                updatePayload.lastReleaseUser = activeUser;
+                updatePayload.hasNotifiedEnd = false; // 標記為尚未發送冷卻結束通知
+
                 stopUsageTimer();
 
                 const unlockDate = new Date(cooldownEndTime);
@@ -1142,27 +1155,16 @@
                 const uMinutes = String(unlockDate.getMinutes()).padStart(2, '0');
                 cooldownUnlockTimeStr = `${uHours}:${uMinutes}`;
             } else {
-                if (discordTimeoutId) {
-                    clearTimeout(discordTimeoutId);
-                    discordTimeoutId = null;
-                }
+                // 🆕 如果是上線上鎖，主動清除舊的冷卻限制與通知狀態
+                updatePayload.cooldownEndTime = 0;
+                updatePayload.hasNotifiedEnd = true;
             }
 
-            database.ref('netflix').update({
-                isUsing: nextStatus,
-                currentUser: nextStatus ? myName : "",
-                currentUserToken: nextStatus ? myToken : "", 
-                watchMode: nextStatus ? selectedMode : "",
-                device: nextStatus ? selectedDevice : "" ,
-                startTime: nextStatus ? nowMs : 0 ,
-                lastUrgeTime: nextStatus ? 0 : (serverLastUrgeTime || 0) // 上線觀看時，重置雲端的催促計時
-            }).then(() => {
+            database.ref('netflix').update(updatePayload).then(() => {
                 showToast(nextStatus ? "🔴 狀態已更新：觀看中！" : "🟢 狀態已更新：帳號已釋放！", "success");
                 let targetUser = (activeUser === "lijerry") ? "小揖ΛτλαnTIs" : "lijerry";
                 
                 sendDiscordNotification(activeUser, targetUser, nextStatus, selectedMode, selectedDevice, false, cooldownUnlockTimeStr, totalDurationStr);
-                
-                checkAndRunCooldown();
             });
         });
 
@@ -1170,13 +1172,6 @@
         forceReleaseBtn.addEventListener('click', () => {
             showConfirm(`確定要強制解除 ${currentUserName} 的鎖定狀態嗎？(請先確認對方不是正在看喔)`, () => {
                 const previousUser = currentUserName; 
-                
-                if (discordTimeoutId) {
-                    clearTimeout(discordTimeoutId);
-                    discordTimeoutId = null;
-                }
-                localStorage.removeItem('netflix_cooldown_end_time');
-                localStorage.removeItem('netflix_last_release_user');
 
                 database.ref('netflix').update({
                     isUsing: false,
@@ -1185,7 +1180,9 @@
                     watchMode: "",
                     device: "",
                     startTime: 0,
-                    lastUrgeTime: 0 // 強制釋放也順便清空雲端催促計時
+                    lastUrgeTime: 0,
+                    cooldownEndTime: 0,       // 🆕 強制釋放直接清空冷卻
+                    hasNotifiedEnd: true      // 🆕 標記為不需補發通知
                 }).then(() => {
                     showToast("🔓 已強制重置狀態為空閒！", "info");
                     sendDiscordNotification(myName, previousUser, false, "", "", true);
