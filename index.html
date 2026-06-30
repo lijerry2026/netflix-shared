@@ -590,7 +590,14 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
+            navigator.serviceWorker.register('sw.js').then(reg => {
+                // 每 30 秒跟 Service Worker 報到一次，延長網頁在手機背景被凍結的時間
+                setInterval(() => {
+                    if (reg.active) {
+                        reg.active.postMessage({type: 'PING'});
+                    }
+                }, 30000);
+            }).catch(err => console.log(err));
         }
 
         const userPasswords = {
@@ -980,11 +987,11 @@
             
             if (timeLeft <= 0) {
                 if (!serverHasNotifiedEnd) {
-                    database.ref('netflix').update({ hasNotifiedEnd: true });
-                    
-                    let lastUser = serverLastReleaseUser || myName;
-                    let targetUser = (lastUser === "lijerry") ? "小揖ΛτλαnTIs" : "lijerry";
-                    sendCooldownEndNotification(lastUser, targetUser);
+                    database.ref('netflix').update({ hasNotifiedEnd: true }).then(() => {
+                        let lastUser = serverLastReleaseUser || myName;
+                        let targetUser = (lastUser === "lijerry") ? "小揖ΛτλαnTIs" : "lijerry";
+                        sendCooldownEndNotification(lastUser, targetUser);
+                    });
                 }
                 if (cooldownInterval) {
                     clearInterval(cooldownInterval);
@@ -1141,7 +1148,6 @@
                     modeGroup.classList.remove('hide-animate');
                     deviceGroup.classList.remove('hide-animate');
                     
-                    // 沒人使用時，依據當前選單狀況重新定位可選項目
                     updateModeOptions();
                 }
                 urgeBtn.style.display = 'none'; 
